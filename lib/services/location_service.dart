@@ -1,4 +1,4 @@
-import 'package:geolocator/geolocator.dart';
+import "package:geolocator/geolocator.dart";
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -46,7 +46,7 @@ class LocationService {
     try {
       return await Geolocator.getCurrentPosition();
     } catch (e) {
-      print('Error getting location: $e');
+      print("Error getting location: $e");
       return null;
     }
   }

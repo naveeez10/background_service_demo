@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'services/background_service.dart';
-import 'services/location_service.dart';
+import "package:flutter/material.dart";
+import "package:flutter_background_service/flutter_background_service.dart";
+import "package:flutter_local_notifications/flutter_local_notifications.dart";
+import "package:background_service_demo/services/background_service.dart";
+import "package:background_service_demo/services/location_service.dart";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,23 +12,9 @@ void main() async {
       FlutterLocalNotificationsPlugin();
 
   await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
       ?.requestNotificationsPermission();
-
-  // Initialize notifications
-  await flutterLocalNotificationsPlugin.initialize(
-    const InitializationSettings(
-      android: AndroidInitializationSettings('ic_launcher'),
-      iOS: DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
-        defaultPresentAlert: true,
-        defaultPresentBadge: true,
-        defaultPresentSound: true,
-      ),
-    ),
-  );
 
   await BackgroundService.initializeService();
   runApp(const MyApp());
@@ -67,10 +53,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _listenToLocationUpdates() {
-    _service.on('update_location').listen((event) {
+    _service.on("update_location").listen((event) {
       if (event != null && mounted) {
         setState(() {
-          _currentLocation = 'Lat: ${event['latitude']}, Lng: ${event['longitude']}';
+          _currentLocation =
+              'Lat: ${event['latitude']}, Lng: ${event['longitude']}';
         });
       }
     });
@@ -79,16 +66,17 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _handleServiceToggle() async {
     final isRunning = await _service.isRunning();
     if (isRunning) {
-      _service.invoke('stopService');
+      _service.invoke("stopService");
     } else {
       final hasPermission = await _locationService.requestPermissions();
       if (hasPermission) {
-        _service.startService();
+        await _service.startService();
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Location permissions are required to start tracking'),
+              content:
+                  Text("Location permissions are required to start tracking"),
             ),
           );
         }
@@ -101,23 +89,24 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Location Tracker'),
+        title: const Text("Location Tracker"),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(_currentLocation ?? 'No location data'),
+            Text(_currentLocation ?? "No location data"),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _handleServiceToggle,
-              child: FutureBuilder<bool>(
-                future: _service.isRunning(),
-                builder: (context, snapshot) {
-                  return Text(snapshot.data == true ? 'Stop Service' : 'Start Service');
-                },
-              ),
-            ),
+              child:
+                const Text("Start Service"),
+              )
+            ,ElevatedButton(
+              onPressed: _handleServiceToggle,
+              child:
+                const Text("Stop Service"),
+              )
           ],
         ),
       ),

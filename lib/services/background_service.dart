@@ -1,10 +1,10 @@
-import 'dart:async';
-import 'dart:isolate';
-import 'dart:ui' show DartPluginRegistrant, IsolateNameServer;
+import "dart:async";
+import "dart:isolate";
+import "dart:ui" show DartPluginRegistrant, IsolateNameServer;
 
-import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:background_service_demo/services/location_service.dart';
+import "package:flutter_background_service/flutter_background_service.dart";
+import "package:flutter_local_notifications/flutter_local_notifications.dart";
+import "package:background_service_demo/services/location_service.dart";
 
 @pragma("vm:entry-point")
 class BackgroundService {
@@ -23,12 +23,13 @@ class BackgroundService {
     await _service.configure(
       androidConfiguration: AndroidConfiguration(
         onStart: onStart,
-        autoStart: true,
+        autoStart: false,
         autoStartOnBoot: true,
         isForegroundMode: true,
-        notificationChannelId: 'location_service', // <--- Must match the channel below
-        initialNotificationTitle: 'Location Service',
-        initialNotificationContent: 'Tracking location in background',
+        notificationChannelId:
+            "location_service", // <--- Must match the channel below
+        initialNotificationTitle: "Location Service",
+        initialNotificationContent: "Tracking location in background",
         foregroundServiceNotificationId: 888,
       ),
       iosConfiguration: IosConfiguration(
@@ -45,7 +46,7 @@ class BackgroundService {
     );
 
     _receivePort.listen((message) {
-      if (message == 'stopService') {
+      if (message == "stopService") {
         stopService();
       }
     });
@@ -58,17 +59,19 @@ class BackgroundService {
 
     // Android-specific initialization
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings("@mipmap/ic_launcher");
 
     // iOS-specific initialization
-    const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
+    const DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
     // Unified settings
-    const InitializationSettings initializationSettings = InitializationSettings(
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
@@ -77,20 +80,22 @@ class BackgroundService {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     // Create (or update) the notification channel for Android
-    const AndroidNotificationChannel androidChannel = AndroidNotificationChannel(
-      'location_service', // <--- Must match the 'notificationChannelId' above
-      'Location Service', // Channel name
-      description: 'Used for the location tracking service',
+    const AndroidNotificationChannel androidChannel =
+        AndroidNotificationChannel(
+      "location_service", // <--- Must match the 'notificationChannelId' above
+      "Location Service", // Channel name
+      description: "Used for the location tracking service",
       importance: Importance.high, // Can adjust based on your needs
     );
 
     await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(androidChannel);
   }
 
   /// iOS background handler
-  @pragma('vm:entry-point')
+  @pragma("vm:entry-point")
   static Future<bool> onIosBackground(ServiceInstance service) async {
     // Ensure plugins are registered for background isolate
     DartPluginRegistrant.ensureInitialized();
@@ -99,27 +104,24 @@ class BackgroundService {
 
   /// Main entry point for the background isolate (on Android and iOS foreground)
   @pragma("vm:entry-point")
-  static void onStart(ServiceInstance service) async {
+  static Future<void> onStart(ServiceInstance service) async {
     try {
       DartPluginRegistrant.ensureInitialized();
 
-      // 1. Initialize services
-      final locationService = LocationService();
-      await locationService.initialize();
-
-      // 2. Show an IMMEDIATE notification, letting Android know
+      // 1. Show an IMMEDIATE notification, letting Android know
       //    we're running in the foreground (required to prevent kills).
-      final FlutterLocalNotificationsPlugin notifications = FlutterLocalNotificationsPlugin();
+      final FlutterLocalNotificationsPlugin notifications =
+          FlutterLocalNotificationsPlugin();
 
       await notifications.show(
         888, // A unique notification ID
-        'Service Running',
-        'Foreground service is active',
+        "Service Running",
+        "Foreground service is active",
         const NotificationDetails(
           android: AndroidNotificationDetails(
-            'location_service', // Matches channel ID created above
-            'Location Service', // Channel name
-            icon: '@mipmap/ic_launcher',
+            "location_service", // Matches channel ID created above
+            "Location Service", // Channel name
+            icon: "@mipmap/ic_launcher",
             ongoing: true,
             importance: Importance.high,
             priority: Priority.high,
@@ -128,9 +130,29 @@ class BackgroundService {
         ),
       );
 
+      // 2. Initialize services
+      final locationService = LocationService();
+      await locationService.initialize();
+
       // 3. Set up a periodic timer to update location every 10 seconds
       _timer = Timer.periodic(const Duration(seconds: 2), (_) async {
         try {
+          await notifications.show(
+            888, // A unique notification ID
+            "Service Running",
+            "Foreground service is active",
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                "location_service", // Matches channel ID created above
+                "Location Service", // Channel name
+                icon: "@mipmap/ic_launcher",
+                ongoing: true,
+                importance: Importance.high,
+                priority: Priority.high,
+              ),
+              iOS: DarwinNotificationDetails(),
+            ),
+          );
           final position = await locationService.getCurrentLocation();
           if (position != null) {
             final now = DateTime.now();
@@ -139,16 +161,16 @@ class BackgroundService {
 
             // Update the existing notification with location/time
             await notifications.show(
-              888, // Use the same notification ID
-              'Location Tracking Active',
-              'Location: ${position.latitude.toStringAsFixed(4)}, '
-                  '${position.longitude.toStringAsFixed(4)}\nLast Update: $formattedTime',
+              887,
+              "Location Tracking Active",
+              "Location: ${position.latitude.toStringAsFixed(4)}, "
+                  "${position.longitude.toStringAsFixed(4)}\nLast Update: $formattedTime",
               const NotificationDetails(
                 android: AndroidNotificationDetails(
-                  'location_service', // same channel ID
-                  'Location Service',
+                  "location_service", // same channel ID
+                  "Location Service",
                   ongoing: true,
-                  icon: '@mipmap/ic_launcher',
+                  icon: "@mipmap/ic_launcher",
                   importance: Importance.low,
                   priority: Priority.low,
                   playSound: false,
@@ -163,11 +185,11 @@ class BackgroundService {
 
             // Optionally, send data back to the main isolate
             service.invoke(
-              'update_location',
+              "update_location",
               {
-                'latitude': position.latitude,
-                'longitude': position.longitude,
-                'timestamp': now.toIso8601String(),
+                "latitude": position.latitude,
+                "longitude": position.longitude,
+                "timestamp": now.toIso8601String(),
               },
             );
           }
@@ -177,7 +199,7 @@ class BackgroundService {
       });
 
       // 4. Handle "stopService" requests
-      service.on('stopService').listen((event) {
+      service.on("stopService").listen((event) {
         stopService();
       });
 
@@ -201,13 +223,13 @@ class BackgroundService {
   static Future<void> stopService() async {
     print("Stopping service.");
     _timer?.cancel();
-    _service.invoke('stopService'); // Tells background isolate to stop
+    _service.invoke("stopService"); // Tells background isolate to stop
     IsolateNameServer.removePortNameMapping(_serviceName);
     print("Service stopped.");
   }
 
   /// Checks if the service is running
   static Future<bool> isServiceRunning() async {
-    return await _service.isRunning();
+    return _service.isRunning();
   }
 }
