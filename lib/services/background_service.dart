@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:isolate";
 import "dart:ui" show DartPluginRegistrant, IsolateNameServer;
 
+import "package:flutter_background_geolocation/flutter_background_geolocation.dart";
 import "package:flutter_background_service/flutter_background_service.dart";
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:background_service_demo/services/location_service.dart";
@@ -26,8 +27,7 @@ class BackgroundService {
         autoStart: false,
         autoStartOnBoot: true,
         isForegroundMode: true,
-        notificationChannelId:
-            "location_service", // <--- Must match the channel below
+        notificationChannelId: "location_service", // <--- Must match the channel below
         initialNotificationTitle: "Location Service",
         initialNotificationContent: "Tracking location in background",
         foregroundServiceNotificationId: 888,
@@ -62,16 +62,14 @@ class BackgroundService {
         AndroidInitializationSettings("@mipmap/ic_launcher");
 
     // iOS-specific initialization
-    const DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
+    const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
     // Unified settings
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
+    const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
@@ -80,8 +78,7 @@ class BackgroundService {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     // Create (or update) the notification channel for Android
-    const AndroidNotificationChannel androidChannel =
-        AndroidNotificationChannel(
+    const AndroidNotificationChannel androidChannel = AndroidNotificationChannel(
       "location_service", // <--- Must match the 'notificationChannelId' above
       "Location Service", // Channel name
       description: "Used for the location tracking service",
@@ -89,8 +86,7 @@ class BackgroundService {
     );
 
     await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(androidChannel);
   }
 
@@ -105,13 +101,16 @@ class BackgroundService {
   /// Main entry point for the background isolate (on Android and iOS foreground)
   @pragma("vm:entry-point")
   static Future<void> onStart(ServiceInstance service) async {
-    try {
-      DartPluginRegistrant.ensureInitialized();
+    DartPluginRegistrant.ensureInitialized();
 
+    // Initialize location service in background isolate
+    final locationService = LocationService();
+    // Remove permission check from initialize
+
+    try {
       // 1. Show an IMMEDIATE notification, letting Android know
       //    we're running in the foreground (required to prevent kills).
-      final FlutterLocalNotificationsPlugin notifications =
-          FlutterLocalNotificationsPlugin();
+      final FlutterLocalNotificationsPlugin notifications = FlutterLocalNotificationsPlugin();
 
       await notifications.show(
         888, // A unique notification ID
@@ -130,11 +129,7 @@ class BackgroundService {
         ),
       );
 
-      // 2. Initialize services
-      final locationService = LocationService();
-      await locationService.initialize();
-
-      // 3. Set up a periodic timer to update location every 10 seconds
+      // 2. Set up a periodic timer to update location every 10 seconds
       _timer = Timer.periodic(const Duration(seconds: 2), (_) async {
         try {
           await notifications.show(
@@ -153,46 +148,44 @@ class BackgroundService {
               iOS: DarwinNotificationDetails(),
             ),
           );
-          final position = await locationService.getCurrentLocation();
-          if (position != null) {
-            final now = DateTime.now();
-            final formattedTime =
-                "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+          final position = await BackgroundGeolocation.getCurrentPosition();
+          final now = DateTime.now();
+          final formattedTime =
+              "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
 
-            // Update the existing notification with location/time
-            await notifications.show(
-              887,
-              "Location Tracking Active",
-              "Location: ${position.latitude.toStringAsFixed(4)}, "
-                  "${position.longitude.toStringAsFixed(4)}\nLast Update: $formattedTime",
-              const NotificationDetails(
-                android: AndroidNotificationDetails(
-                  "location_service", // same channel ID
-                  "Location Service",
-                  ongoing: true,
-                  icon: "@mipmap/ic_launcher",
-                  importance: Importance.low,
-                  priority: Priority.low,
-                  playSound: false,
-                  enableVibration: false,
-                ),
-                iOS: DarwinNotificationDetails(
-                  presentSound: false,
-                  presentBadge: false,
-                ),
+          // Update the existing notification with location/time
+          await notifications.show(
+            887,
+            "Location Tracking Active",
+            "Location: ${position.coords.latitude.toStringAsFixed(4)}, "
+                "${position.coords.longitude.toStringAsFixed(4)}\nLast Update: $formattedTime",
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                "location_service", // same channel ID
+                "Location Service",
+                ongoing: true,
+                icon: "@mipmap/ic_launcher",
+                importance: Importance.low,
+                priority: Priority.low,
+                playSound: false,
+                enableVibration: false,
               ),
-            );
+              iOS: DarwinNotificationDetails(
+                presentSound: false,
+                presentBadge: false,
+              ),
+            ),
+          );
 
-            // Optionally, send data back to the main isolate
-            service.invoke(
-              "update_location",
-              {
-                "latitude": position.latitude,
-                "longitude": position.longitude,
-                "timestamp": now.toIso8601String(),
-              },
-            );
-          }
+          // Optionally, send data back to the main isolate
+          service.invoke(
+            "update_location",
+            {
+              "latitude": position.coords.latitude,
+              "longitude": position.coords.longitude,
+              "timestamp": now.toIso8601String(),
+            },
+          );
         } catch (e, stack) {
           print("Error in periodic timer: $e\n$stack");
         }
