@@ -64,6 +64,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.resumed) {
+      await _service.startService();
+    }
+  }
+
   Future<void> stopService() async {
     final isRunning = await _service.isRunning();
     if (isRunning) {

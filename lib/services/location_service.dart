@@ -37,12 +37,6 @@ class LocationService {
   }
 
   Future<void> initialize() async {
-    bool permissionsGranted = await requestPermissions();
-    if (!permissionsGranted) {
-      print("Permissions not granted");
-      return;
-    }
-
     BackgroundGeolocation.onLocation((Location location) async {
       print("Location: $location");
     });
@@ -68,36 +62,36 @@ class LocationService {
         startOnBoot: true,
       ),
     );
-    await BackgroundFetch.configure(
-        BackgroundFetchConfig(
-          minimumFetchInterval: 15,
-          startOnBoot: true,
-          stopOnTerminate: false,
-          enableHeadless: true,
-          requiresStorageNotLow: false,
-          requiresBatteryNotLow: false,
-          requiresCharging: false,
-          requiresDeviceIdle: false,
-          requiredNetworkType: NetworkType.NONE,
-        ), (String taskId) async {
-      try {
-        // Fetch current position
-        Location location = await BackgroundGeolocation.getCurrentPosition(
-          samples: 2,
-          maximumAge: 1000 * 10, // 30 seconds ago
-          timeout: 30,
-          desiredAccuracy: 40,
-          persist: true,
-          extras: {"event": "background-fetch", "headless": false},
-        );
-        print("[location] $location");
-      } catch (error, stk) {
-        print("An error occurred in fetching current position from tsgl");
-      }
+    // await BackgroundFetch.configure(
+    //     BackgroundFetchConfig(
+    //       minimumFetchInterval: 15,
+    //       startOnBoot: true,
+    //       stopOnTerminate: false,
+    //       enableHeadless: true,
+    //       requiresStorageNotLow: false,
+    //       requiresBatteryNotLow: false,
+    //       requiresCharging: false,
+    //       requiresDeviceIdle: false,
+    //       requiredNetworkType: NetworkType.NONE,
+    //     ), (String taskId) async {
+    //   try {
+    //     // Fetch current position
+    //     Location location = await BackgroundGeolocation.getCurrentPosition(
+    //       samples: 2,
+    //       maximumAge: 1000 * 10, // 30 seconds ago
+    //       timeout: 30,
+    //       desiredAccuracy: 40,
+    //       persist: true,
+    //       extras: {"event": "background-fetch", "headless": false},
+    //     );
+    //     print("[location] $location");
+    //   } catch (error, stk) {
+    //     print("An error occurred in fetching current position from tsgl");
+    //   }
 
-      print("🔔 [BackgroundFetch finish] $taskId");
-      await BackgroundFetch.finish(taskId);
-    });
+    //   print("🔔 [BackgroundFetch finish] $taskId");
+    //   await BackgroundFetch.finish(taskId);
+    // });
 
     await BackgroundGeolocation.start();
   }

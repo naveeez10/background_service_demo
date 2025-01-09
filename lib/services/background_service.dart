@@ -129,6 +129,8 @@ class BackgroundService {
         ),
       );
 
+      await locationService.initialize();
+
       // 2. Set up a periodic timer to update location every 10 seconds
       _timer = Timer.periodic(const Duration(seconds: 2), (_) async {
         try {
