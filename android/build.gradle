@@ -22,10 +22,6 @@ subprojects {
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
-ext {
-    compileSdkVersion   = 34                
-    targetSdkVersion    = 34                
-    minSdkVersion       = 21                
-    appCompatVersion    = "1.4.2"           
+ext {          
     playServicesLocationVersion = "21.0.1" 
 }
